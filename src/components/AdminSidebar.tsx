@@ -36,6 +36,7 @@ const navSections: NavSection[] = [
     label: "Deliver",
     items: [
       { href: "/deliver", label: "Clients", icon: "◈" },
+      { href: "/deliver/launch", label: "Launch Board", icon: "◆" },
       { href: "/deliver/builds", label: "Builds", icon: "◆" },
       { href: "/deliver/coaching", label: "Coaching", icon: "◇" },
     ],
