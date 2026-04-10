@@ -78,7 +78,7 @@ export default function DeliverPage() {
     <div style={{ maxWidth: 960, margin: "0 auto" }}>
       <div className="flex items-center justify-between mb-5">
         <div>
-          <h1 className="text-lg font-medium" style={{ color: "var(--text)" }}>Deliver</h1>
+          <h1 className="text-lg font-medium" style={{ color: "var(--text)" }}>Fulfillment Engine</h1>
           <p className="text-xs mt-0.5" style={{ color: "var(--muted)" }}>
             Active clients: {clients.length} &middot; Path A: {pathCounts.A} &middot; Path B: {pathCounts.B} &middot; Path C: {pathCounts.C}
           </p>

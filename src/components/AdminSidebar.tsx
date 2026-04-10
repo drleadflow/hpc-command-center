@@ -33,7 +33,7 @@ const navSections: NavSection[] = [
   },
   {
     id: "deliver",
-    label: "Deliver",
+    label: "Fulfillment Engine",
     items: [
       { href: "/deliver", label: "Clients", icon: "◈" },
       { href: "/deliver/launch", label: "Launch Board", icon: "◆" },
