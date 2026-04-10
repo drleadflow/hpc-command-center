@@ -1,0 +1,1 @@
+{"version":3,"file":"deepgram-stt.d.ts","sourceRoot":"","sources":["../../src/voice/deepgram-stt.ts"],"names":[],"mappings":"AAAA;;;;GAIG;AAEH,MAAM,WAAW,mBAAmB;IAClC,QAAQ,CAAC,EAAE,MAAM,CAAA;IACjB,KAAK,CAAC,EAAE,MAAM,CAAA;CACf;AAYD,wBAAsB,YAAY,CAChC,WAAW,EAAE,MAAM,EACnB,OAAO,CAAC,EAAE,mBAAmB,GAC5B,OAAO,CAAC,MAAM,CAAC,CA0CjB"}

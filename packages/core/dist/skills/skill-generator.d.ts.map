@@ -1,0 +1,1 @@
+{"version":3,"file":"skill-generator.d.ts","sourceRoot":"","sources":["../../src/skills/skill-generator.ts"],"names":[],"mappings":"AAKA,OAAO,KAAK,EAAE,KAAK,EAAE,MAAM,aAAa,CAAA;AAmCxC;;;;GAIG;AACH,wBAAsB,oBAAoB,CACxC,QAAQ,EAAE,MAAM,EAChB,cAAc,EAAE,MAAM,EACtB,SAAS,EAAE,MAAM,EAAE,EACnB,aAAa,EAAE,OAAO,EACtB,cAAc,EAAE,KAAK,EAAE,GACtB,OAAO,CAAC,KAAK,GAAG,IAAI,CAAC,CA0HvB"}
