@@ -58,6 +58,18 @@ export function isAdminRole(role: HpcRole | string): boolean {
   return (ADMIN_ROLES as readonly string[]).includes(role);
 }
 
+export const ROLE_LABELS: Record<HpcRole, string> = {
+  ceo: "CEO",
+  ops_manager: "Operations Manager",
+  marketing_lead: "Marketing Lead",
+  content_editor: "Content Editor",
+  appointment_setter: "Appointment Setter",
+  sales_closer: "Sales Closer",
+  ai_tech_specialist: "AI & Tech Specialist",
+  csm_lead_coach: "CSM / Lead Coach",
+  bookkeeper: "Bookkeeper / Finance",
+};
+
 // ── Core Models ─────────────────────────────────────────────────────
 export interface Project {
   id: string;

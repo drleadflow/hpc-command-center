@@ -28,7 +28,7 @@ type StoreKey =
   | "hpc_mrr_history"
   | "hpc_coaching_members";
 
-function read<T>(key: StoreKey, fallback: T): T {
+function read<T>(key: string, fallback: T): T {
   if (typeof window === "undefined") return fallback;
   try {
     const raw = localStorage.getItem(key);
@@ -39,16 +39,19 @@ function read<T>(key: StoreKey, fallback: T): T {
   }
 }
 
-function write<T>(key: StoreKey, data: T): void {
+function write<T>(key: string, data: T): void {
   if (typeof window === "undefined") return;
   try {
-    localStorage.setItem(key, JSON.stringify(data));
+    const next = JSON.stringify(data);
+    const existing = localStorage.getItem(key);
+    if (existing === next) return;
+    localStorage.setItem(key, next);
   } catch {
     // storage full or unavailable
   }
 }
 
-function update<T>(key: StoreKey, fallback: T, updater: (current: T) => T): T {
+function update<T>(key: string, fallback: T, updater: (current: T) => T): T {
   const current = read(key, fallback);
   const next = updater(current);
   write(key, next);
