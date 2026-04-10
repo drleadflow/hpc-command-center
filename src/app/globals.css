@@ -1,0 +1,130 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #f0ede6;
+  --surface: #ffffff;
+  --border: #e5e1d8;
+  --border-subtle: #ede9e0;
+  --text: #1a1916;
+  --text-secondary: #6b6560;
+  --muted: #807a73;
+  --accent: #2d5a4e;
+  --accent-bg: #e8f0ed;
+  --accent-text: #1f3f37;
+  --danger: #b91c1c;
+  --danger-bg: #fef2f2;
+  --warning: #d97706;
+  --warning-bg: #fffbeb;
+  --success: #059669;
+  --success-bg: #ecfdf5;
+  --scrollbar: #d4cec3;
+}
+
+.dark {
+  --bg: #18160f;
+  --surface: #211e16;
+  --border: #33302a;
+  --border-subtle: #2a2720;
+  --text: #f0ede6;
+  --text-secondary: #a09890;
+  --muted: #7a7570;
+  --accent: #4a8c7a;
+  --accent-bg: #1f302c;
+  --accent-text: #b0d0c6;
+  --danger: #c0392b;
+  --danger-bg: #2d1515;
+  --warning: #b8860b;
+  --warning-bg: #2d2510;
+  --success: #2ecc71;
+  --success-bg: #152d1c;
+  --scrollbar: #33302a;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar) transparent;
+}
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: 4px; }
+
+html { font-size: 15px; }
+
+body {
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, "Inter", sans-serif;
+  transition: background-color 0.2s ease, color 0.2s ease;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Utility ── */
+.themed-bg       { background-color: var(--bg); }
+.themed-surface  { background-color: var(--surface); }
+.themed-border   { border-color: var(--border); }
+.themed-text     { color: var(--text); }
+.themed-secondary{ color: var(--text-secondary); }
+.themed-muted    { color: var(--muted); }
+
+/* ── Card ── */
+.card {
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  transition: background-color 0.2s, border-color 0.2s;
+}
+.card-subtle {
+  background-color: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+}
+
+/* ── Blade overrides ── */
+.bg-blade-bg             { background-color: var(--bg); }
+.bg-blade-surface        { background-color: var(--surface); }
+.border-blade-border     { border-color: var(--border); }
+.text-blade-text         { color: var(--text); }
+.text-blade-muted        { color: var(--muted); }
+.bg-blade-border         { background-color: var(--border); }
+.bg-blade-accent\/20     { background-color: var(--accent-bg); }
+.text-blade-accent-light { color: var(--accent); }
+.border-blade-accent     { border-color: var(--accent); }
+.bg-blade-accent         { background-color: var(--accent); }
+
+/* ── Blade Command Center Animations ── */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes pulseGlow {
+  0%, 100% { box-shadow: 0 0 4px currentColor; }
+  50% { box-shadow: 0 0 12px currentColor; }
+}
+.animate-fade-in {
+  animation: fadeIn 0.4s ease-out both;
+}
+.animate-slide-in {
+  animation: slideInLeft 0.4s ease-out both;
+}
+.animate-pulse-glow {
+  animation: pulseGlow 2s ease-in-out infinite;
+}
+
+/* ── Slate overrides for dark mode ── */
+.dark .bg-slate-950,
+.dark .bg-slate-900\/50,
+.dark .bg-slate-900\/30 { background-color: var(--surface); }
+.dark .bg-slate-800\/50,
+.dark .bg-slate-800 { background-color: var(--border); }
+.dark .border-slate-800,
+.dark .border-slate-700\/50 { border-color: var(--border); }
+.dark .text-slate-200 { color: var(--text); }
+.dark .text-slate-400,
+.dark .text-slate-500,
+.dark .text-slate-600 { color: var(--muted); }

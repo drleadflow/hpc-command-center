@@ -1,0 +1,505 @@
+"use client";
+
+import { useState, useEffect, useCallback } from "react";
+import type { HpcRole, TeamStatus } from "@/lib/types";
+
+// ── Types ───────────────────────────────────────────────────────────
+interface CompanyMetric {
+  label: string;
+  value: string;
+  sub: string;
+  status: "ok" | "warn" | "bad" | "";
+}
+
+interface TeamKpi {
+  label: string;
+  value: string;
+  target: string;
+  status: "ok" | "warn" | "bad";
+}
+
+interface TeamCard {
+  role: string;
+  hpcRole: HpcRole;
+  dept: string;
+  status: TeamStatus;
+  tracking: boolean;
+  focus: string;
+  priorities: string[];
+  kpis: TeamKpi[];
+  blocker: string | null;
+}
+
+type ViewMode = "team" | "kpi";
+type DeptFilter = "All" | "CEO & Ops" | "Sales" | "Marketing" | "Fulfillment" | "Finance";
+
+const DEPT_FILTERS: DeptFilter[] = ["All", "CEO & Ops", "Sales", "Marketing", "Fulfillment", "Finance"];
+
+const DEPT_MAP: Record<string, string[]> = {
+  "CEO & Ops": ["CEO", "Ops"],
+  "Sales": ["Sales"],
+  "Marketing": ["Marketing"],
+  "Fulfillment": ["Fulfillment"],
+  "Finance": ["Finance"],
+};
+
+const DEPT_COLORS: Record<string, string> = {
+  CEO: "#D85A30",
+  Ops: "#7F77DD",
+  Marketing: "#378ADD",
+  Sales: "#BA7517",
+  Fulfillment: "#639922",
+  Finance: "#888",
+};
+
+const STATUS_COLORS: Record<TeamStatus, string> = {
+  active: "#639922",
+  meeting: "#185FA5",
+  blocked: "#BA7517",
+  offline: "#888",
+};
+
+const STATUS_LABELS: Record<TeamStatus, string> = {
+  active: "Active",
+  meeting: "In meeting",
+  blocked: "Blocked",
+  offline: "Offline",
+};
+
+// ── Default Data (matches HPC CEO Dashboard doc) ────────────────────
+const DEFAULT_METRICS: CompanyMetric[] = [
+  { label: "Monthly recurring revenue", value: "$24,500", sub: "+$3K vs last month", status: "ok" },
+  { label: "Active clients", value: "9", sub: "3 Path A · 4 Path B · 2 Path C", status: "" },
+  { label: "Calls booked today", value: "3", sub: "7 total in pipeline this week", status: "" },
+  { label: "Open builds (B & C)", value: "2", sub: "1 blocked — access pending", status: "warn" },
+  { label: "Daily tracking submitted", value: "8 / 9", sub: "1 outstanding — Setter", status: "warn" },
+];
+
+const DEFAULT_TEAM: TeamCard[] = [
+  {
+    role: "CEO", hpcRole: "ceo", dept: "CEO", status: "meeting", tracking: true,
+    focus: "Month 3 renewal call — Riverside Dental · Path C",
+    priorities: [
+      "90-min renewal call — Riverside Dental (Path C). Present results snapshot.",
+      "Final approval on yesterday's Sales Closer close — confirm handoff brief received.",
+      "Tuesday leadership sync with Ops Manager at 2pm — pipeline and capacity review.",
+    ],
+    kpis: [
+      { label: "New MRR per month", value: "$24,500", target: "$25K+", status: "warn" },
+      { label: "Client retention — Path C", value: "100%", target: "75%+", status: "ok" },
+      { label: "Close rate maintained", value: "28% MTD", target: "25%+", status: "ok" },
+      { label: "Webinar show rate", value: "38%", target: "40%+", status: "warn" },
+    ],
+    blocker: null,
+  },
+  {
+    role: "Operations Manager", hpcRole: "ops_manager", dept: "Ops", status: "active", tracking: true,
+    focus: "Daily tracking review + client delivery timeline oversight",
+    priorities: [
+      "Daily tracking form review — Setter has not submitted. Follow-up sent.",
+      "Coastal Chiro (Path B) build at Day 10 — walkthrough must be scheduled this week.",
+      "Facilitate Tuesday department sync at 1pm CST — all leads present.",
+    ],
+    kpis: [
+      { label: "Daily tracking compliance", value: "8 / 9", target: "100%", status: "bad" },
+      { label: "Build delivery within 7–14 days", value: "1 / 2 on track", target: "95%+", status: "warn" },
+      { label: "Clients missed weekly report", value: "0", target: "Zero", status: "ok" },
+      { label: "Level 2 crisis response", value: "N/A today", target: "Under 1 hour", status: "ok" },
+    ],
+    blocker: "Appointment Setter has not submitted daily tracking form — follow-up sent. Escalate if third occurrence this month.",
+  },
+  {
+    role: "Marketing Lead", hpcRole: "marketing_lead", dept: "Marketing", status: "active", tracking: true,
+    focus: "Webinar scorecard completion + 2 remaining Reels for this week",
+    priorities: [
+      "Complete Monday webinar scorecard in Notion — due by 6pm today.",
+      "Finish copy and direction for 2 Reels — deliver to Content Editor by noon.",
+      "Call winner on last week's A/B test — deploy winning variant.",
+    ],
+    kpis: [
+      { label: "Webinar show rate", value: "38%", target: "40%+", status: "warn" },
+      { label: "Webinar ad CPR", value: "$8.40", target: "Under $10", status: "ok" },
+      { label: "Email open rate", value: "41%", target: "35%+", status: "ok" },
+      { label: "Cold email reply rate", value: "9%", target: "8%+", status: "ok" },
+    ],
+    blocker: null,
+  },
+  {
+    role: "Content Editor", hpcRole: "content_editor", dept: "Marketing", status: "active", tracking: true,
+    focus: "Batch editing — 2 Reels + 3 carousels from Monday content shoot",
+    priorities: [
+      "Edit and export 2 Reels from Monday shoot — deliver by 11am.",
+      "Produce 3 carousels: lead gen explainer, AI chatbot demo, social proof.",
+      "Upload all finished assets to Canva brand folder — tagged before EOD.",
+    ],
+    kpis: [
+      { label: "Content pieces this week", value: "4 / 6", target: "6+ per week", status: "warn" },
+      { label: "Asset turnaround time", value: "On track", target: "Under 24hrs", status: "ok" },
+      { label: "Brand standard violations", value: "0", target: "Zero", status: "ok" },
+      { label: "Monthly batch completion", value: "On schedule", target: "Weekly batch", status: "ok" },
+    ],
+    blocker: null,
+  },
+  {
+    role: "Appointment Setter", hpcRole: "appointment_setter", dept: "Sales", status: "blocked", tracking: false,
+    focus: "3 marketing audits to deliver from Monday webinar hot leads",
+    priorities: [
+      "Submit daily tracking form — not submitted by 9am. Required before any other work.",
+      "Generate and deliver 3 marketing audits to Monday hot leads — window expiring.",
+      "Complete pre-call intel sheets for both calls booked this week.",
+    ],
+    kpis: [
+      { label: "Hot lead outreach within 2hrs", value: "Pending", target: "100%", status: "bad" },
+      { label: "Opener reply rate", value: "33%", target: "30%+", status: "ok" },
+      { label: "Audit email open rate", value: "72%", target: "70%+", status: "ok" },
+      { label: "Audit-to-call-booked rate", value: "35%", target: "35%+", status: "ok" },
+    ],
+    blocker: "Daily tracking form not submitted by 9am CST — flagged. 3 audit deliveries past the 2-hour response window.",
+  },
+  {
+    role: "Sales Closer", hpcRole: "sales_closer", dept: "Sales", status: "meeting", tracking: true,
+    focus: "3 strategy calls today — Path B, Path C, and Path A conversion",
+    priorities: [
+      "10am: Skyline PT — Path B close attempt. Audit reviewed. Qualifier ready.",
+      "1pm: Premier Wellness — Path C close. Ad budget confirmed. Payment link queued.",
+      "4pm: Dr. Chen Chiro — Path A conversion. Audit prepared.",
+    ],
+    kpis: [
+      { label: "Close rate — Path A", value: "33% MTD", target: "30%+", status: "ok" },
+      { label: "Close rate — Path B", value: "25% MTD", target: "25%+", status: "ok" },
+      { label: "Close rate — Path C", value: "20% MTD", target: "20%+", status: "ok" },
+      { label: "Payment collected on call", value: "75%", target: "70%+", status: "ok" },
+    ],
+    blocker: null,
+  },
+  {
+    role: "AI & Tech Specialist", hpcRole: "ai_tech_specialist", dept: "Fulfillment", status: "blocked", tracking: true,
+    focus: "Coastal Chiro walkthrough blocked — awaiting Meta Business Manager access",
+    priorities: [
+      "Coastal Chiro (Day 10): Meta BM access missing. CSM following up. QA everything else.",
+      "Summit Wellness Path B (Day 5): complete chatbot config + activate 3 core sequences.",
+      "Weekly anomaly check — test all automation triggers across active sub-accounts.",
+    ],
+    kpis: [
+      { label: "Build within 7–14 days", value: "1 / 2 on track", target: "95%+", status: "bad" },
+      { label: "Zero errors at walkthrough", value: "100%", target: "100%", status: "ok" },
+      { label: "Weekly anomaly check", value: "Completed", target: "100%", status: "ok" },
+      { label: "Capacity flag raised", value: "Yes — raised Day 8", target: "Never reactive", status: "ok" },
+    ],
+    blocker: "Coastal Chiro build blocked at Day 10 — client has not granted Meta BM access. CSM flagged in Slack.",
+  },
+  {
+    role: "CSM / Lead Coach", hpcRole: "csm_lead_coach", dept: "Fulfillment", status: "meeting", tracking: true,
+    focus: "Weekly Path A group coaching call at 11am + milestone Loom due today",
+    priorities: [
+      "11am: Weekly Path A group coaching call — topic: reading first 30-day results.",
+      "Send milestone Loom to Summit Wellness — first lead captured yesterday. 24hr window.",
+      "2pm: Monthly optimization call — Peak Performance PT (Path B, Month 2).",
+    ],
+    kpis: [
+      { label: "Milestone Loom within 24hrs", value: "1 pending", target: "100%", status: "warn" },
+      { label: "Satisfaction score avg", value: "8.7 / 10", target: "8+", status: "ok" },
+      { label: "Weekly group call held", value: "Yes — 11am today", target: "Every week", status: "ok" },
+      { label: "Results snapshot before call", value: "100%", target: "100%", status: "ok" },
+    ],
+    blocker: null,
+  },
+  {
+    role: "Bookkeeper / Finance", hpcRole: "bookkeeper", dept: "Finance", status: "active", tracking: true,
+    focus: "Bi-weekly invoice processing + commission log update from yesterday's close",
+    priorities: [
+      "Process 4 contractor bi-weekly invoices — payment due within 5 business days.",
+      "Update commission log for yesterday's close (Path B, $3K) — $300 entry due within 24hrs.",
+      "Begin draft monthly P&L by offer path — due to CEO by the 5th.",
+    ],
+    kpis: [
+      { label: "Invoices paid within 5 days", value: "4 in process", target: "5-day max", status: "ok" },
+      { label: "Commission log within 24hrs", value: "Pending — 18hrs", target: "24hrs", status: "warn" },
+      { label: "Monthly P&L by the 5th", value: "Draft in progress", target: "5th", status: "ok" },
+      { label: "Payment discrepancies", value: "0", target: "Zero", status: "ok" },
+    ],
+    blocker: null,
+  },
+];
+
+// ── Component ───────────────────────────────────────────────────────
+export function BridgeDashboard() {
+  const [view, setView] = useState<ViewMode>("team");
+  const [filter, setFilter] = useState<DeptFilter>("All");
+  const [metrics] = useState<CompanyMetric[]>(DEFAULT_METRICS);
+  const [team] = useState<TeamCard[]>(DEFAULT_TEAM);
+
+  const today = new Date().toLocaleDateString("en-US", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+
+  const filteredTeam = team.filter((p) => {
+    if (filter === "All") return true;
+    return (DEPT_MAP[filter] ?? []).includes(p.dept);
+  });
+
+  const blockers = filteredTeam.filter((p) => p.blocker);
+
+  return (
+    <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+      {/* Header */}
+      <div className="flex justify-between items-end flex-wrap gap-3 mb-5">
+        <div>
+          <h1 className="text-lg font-medium" style={{ color: "var(--text)" }}>
+            CEO / Ops Manager Dashboard
+          </h1>
+          <p className="text-xs mt-0.5" style={{ color: "var(--muted)" }}>{today}</p>
+        </div>
+        <div className="flex gap-1 rounded-lg p-1" style={{ backgroundColor: "var(--bg)" }}>
+          {(["team", "kpi"] as const).map((v) => (
+            <button
+              key={v}
+              onClick={() => setView(v)}
+              className="px-3 py-1 rounded-md text-xs transition-all"
+              style={{
+                backgroundColor: view === v ? "var(--surface)" : "transparent",
+                color: view === v ? "var(--text)" : "var(--muted)",
+                fontWeight: view === v ? 500 : 400,
+                border: view === v ? "0.5px solid var(--border)" : "none",
+              }}
+            >
+              {v === "team" ? "Team view" : "KPI view"}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Metrics Row */}
+      <div className="grid gap-2 mb-5" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))" }}>
+        {metrics.map((m) => (
+          <div key={m.label} className="rounded-lg px-3 py-3" style={{ backgroundColor: "var(--bg)" }}>
+            <div className="text-[10px] uppercase tracking-wider mb-1" style={{ color: "var(--muted)" }}>
+              {m.label}
+            </div>
+            <div
+              className="text-xl font-medium leading-none mb-0.5"
+              style={{
+                color: m.status === "ok" ? "var(--success)"
+                  : m.status === "warn" ? "var(--warning)"
+                  : m.status === "bad" ? "var(--danger)"
+                  : "var(--text)",
+              }}
+            >
+              {m.value}
+            </div>
+            <div className="text-[10px]" style={{ color: "var(--muted)" }}>{m.sub}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Legend */}
+      <div className="flex gap-4 flex-wrap mb-4">
+        {(Object.entries(STATUS_LABELS) as [TeamStatus, string][]).map(([key, label]) => (
+          <div key={key} className="flex items-center gap-1.5 text-[10px]" style={{ color: "var(--muted)" }}>
+            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: STATUS_COLORS[key] }} />
+            {label}
+          </div>
+        ))}
+      </div>
+
+      {/* Department Filters */}
+      <div className="flex gap-1.5 flex-wrap mb-4">
+        {DEPT_FILTERS.map((d) => (
+          <button
+            key={d}
+            onClick={() => setFilter(d)}
+            className="px-3 py-1 rounded-full text-xs transition-all"
+            style={{
+              backgroundColor: filter === d ? "var(--text)" : "var(--surface)",
+              color: filter === d ? "var(--bg)" : "var(--muted)",
+              border: filter === d ? "none" : "0.5px solid var(--border)",
+            }}
+          >
+            {d}
+          </button>
+        ))}
+      </div>
+
+      {/* Team Grid */}
+      <div className="grid gap-3 mb-5" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(310px, 1fr))" }}>
+        {filteredTeam.map((p) => (
+          <div
+            key={p.role}
+            className="rounded-xl overflow-hidden"
+            style={{
+              backgroundColor: "var(--surface)",
+              border: "0.5px solid var(--border)",
+              borderLeft: `3px solid ${DEPT_COLORS[p.dept] ?? "var(--border)"}`,
+            }}
+          >
+            {/* Card Header */}
+            <div
+              className="px-3 py-2.5 flex items-center gap-2"
+              style={{ borderBottom: "0.5px solid var(--border-subtle)" }}
+            >
+              <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: STATUS_COLORS[p.status] }} />
+              <div className="flex-1 min-w-0">
+                <div className="text-xs font-medium truncate" style={{ color: "var(--text)" }}>{p.role}</div>
+                <div className="text-[10px]" style={{ color: "var(--muted)" }}>{p.dept}</div>
+              </div>
+              <span
+                className="text-[9px] px-2 py-0.5 rounded-sm font-medium flex-shrink-0"
+                style={{
+                  backgroundColor: `${DEPT_COLORS[p.dept] ?? "#888"}18`,
+                  color: DEPT_COLORS[p.dept] ?? "#888",
+                }}
+              >
+                {p.dept}
+              </span>
+              <span
+                className="text-[9px] px-1.5 py-0.5 rounded-sm flex-shrink-0"
+                style={{
+                  backgroundColor: p.tracking ? "var(--success-bg, #EAF3DE)" : "var(--danger-bg, #FCEBEB)",
+                  color: p.tracking ? "var(--success)" : "var(--danger)",
+                }}
+              >
+                {p.tracking ? "Tracking \u2713" : "No tracking"}
+              </span>
+            </div>
+
+            {/* Card Body */}
+            <div className="px-3 py-3">
+              {/* Focus */}
+              <div
+                className="text-[10px] mb-3 pb-3 flex gap-1.5 leading-relaxed"
+                style={{ color: "var(--muted)", borderBottom: "0.5px solid var(--border-subtle)" }}
+              >
+                <span className="text-[10px] font-medium uppercase tracking-wider flex-shrink-0" style={{ color: "var(--text-secondary)" }}>
+                  Now:
+                </span>
+                <span>{p.focus}</span>
+              </div>
+
+              {/* Team View: Priorities | KPI View: All KPIs */}
+              {view === "team" ? (
+                <div className="flex flex-col gap-1.5 mb-3">
+                  {p.priorities.map((pr, i) => (
+                    <div key={i} className="flex gap-2 text-[11px] leading-snug" style={{ color: "var(--text-secondary)" }}>
+                      <span
+                        className="w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-medium flex-shrink-0 mt-0.5"
+                        style={{ backgroundColor: "var(--bg)", color: "var(--muted)" }}
+                      >
+                        {i + 1}
+                      </span>
+                      <span>{pr}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-1.5 mb-3">
+                  {p.kpis.map((k) => (
+                    <div key={k.label} className="rounded-md px-2.5 py-2" style={{ backgroundColor: "var(--bg)" }}>
+                      <div className="text-[9px] leading-tight mb-1" style={{ color: "var(--muted)" }}>{k.label}</div>
+                      <div
+                        className="text-sm font-medium"
+                        style={{
+                          color: k.status === "ok" ? "var(--success)"
+                            : k.status === "warn" ? "var(--warning)"
+                            : "var(--danger)",
+                        }}
+                      >
+                        {k.value}
+                      </div>
+                      <div className="text-[9px] mt-0.5" style={{ color: "var(--muted)" }}>{k.target}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Primary KPI bar */}
+              <div
+                className="flex items-center gap-2 pt-2"
+                style={{ borderTop: "0.5px solid var(--border-subtle)" }}
+              >
+                <span className="text-[10px] flex-1 leading-tight" style={{ color: "var(--muted)" }}>
+                  {p.kpis[0].label}
+                </span>
+                <span
+                  className="text-xs font-medium"
+                  style={{
+                    color: p.kpis[0].status === "ok" ? "var(--success)"
+                      : p.kpis[0].status === "warn" ? "var(--warning)"
+                      : "var(--danger)",
+                  }}
+                >
+                  {p.kpis[0].value}
+                </span>
+                <span className="text-[10px]" style={{ color: "var(--muted)" }}>
+                  / {p.kpis[0].target}
+                </span>
+              </div>
+            </div>
+
+            {/* Blocker */}
+            {p.blocker && (
+              <div
+                className="px-3 py-2 flex gap-2 items-start text-[10px] leading-snug"
+                style={{
+                  backgroundColor: "var(--warning-bg, #FDF3E3)",
+                  borderTop: "0.5px solid var(--warning, #E8C87A)",
+                  color: "var(--warning-text, #854F0B)",
+                }}
+              >
+                <span
+                  className="w-3.5 h-3.5 rounded-full flex items-center justify-center text-[9px] font-bold flex-shrink-0 mt-0.5"
+                  style={{ backgroundColor: "var(--warning)", color: "#fff" }}
+                >
+                  !
+                </span>
+                {p.blocker}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* Active Blockers Panel */}
+      {blockers.length > 0 && (
+        <div
+          className="rounded-xl overflow-hidden mb-5"
+          style={{
+            border: "0.5px solid var(--warning, #E8C87A)",
+            backgroundColor: "var(--warning-bg, #FDF3E3)",
+          }}
+        >
+          <div
+            className="px-4 py-2.5 flex items-center gap-2"
+            style={{ borderBottom: "0.5px solid var(--warning, #E8C87A)" }}
+          >
+            <span className="text-xs font-medium" style={{ color: "var(--warning-text, #854F0B)" }}>
+              Active blockers and flags today
+            </span>
+            <span
+              className="text-[10px] px-2 py-0.5 rounded-full"
+              style={{ backgroundColor: "var(--warning-text, #854F0B)", color: "var(--warning-bg, #FDF3E3)" }}
+            >
+              {blockers.length}
+            </span>
+          </div>
+          {blockers.map((p) => (
+            <div
+              key={p.role}
+              className="px-4 py-2.5 flex gap-4 items-start text-[11px]"
+              style={{ borderBottom: "0.5px solid var(--warning, #E8C87A)" }}
+            >
+              <span className="font-medium flex-shrink-0 w-44" style={{ color: "var(--warning-text, #854F0B)" }}>
+                {p.role}
+              </span>
+              <span style={{ color: "var(--warning-text, #92610A)", lineHeight: 1.45 }}>
+                {p.blocker}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}

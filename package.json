@@ -1,0 +1,57 @@
+{
+  "name": "blade-command-center",
+  "version": "0.2.0",
+  "private": true,
+  "workspaces": ["packages/*"],
+  "engines": {
+    "node": "20.x"
+  },
+  "scripts": {
+    "build:packages": "cd packages/shared && npm run build && cd ../db && npm run build && cd ../core && npm run build && cd ../docker-runner && npm run build",
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "sync:supabase": "node scripts/sync-supabase.mjs all",
+    "sync:supabase:content": "node scripts/sync-supabase.mjs content",
+    "sync:supabase:outreach": "node scripts/sync-supabase.mjs outreach"
+  },
+  "dependencies": {
+    "@ai-sdk/anthropic": "^3.0.64",
+    "@ai-sdk/openai": "^3.0.49",
+    "@hello-pangea/dnd": "^18.0.1",
+    "@mendable/firecrawl-js": "^4.18.1",
+    "@mux/mux-player-react": "^3.11.7",
+    "@mux/mux-uploader-react": "^1.4.1",
+    "@supabase/supabase-js": "^2.101.1",
+    "ai": "^4.3.19",
+    "gray-matter": "^4.0.3",
+    "mysql2": "^3.20.0",
+    "next": "^14.2.21",
+    "next-auth": "^4.24.13",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "undici": "^8.0.2",
+    "uuid": "^11.1.0",
+    "zod": "^3.25.76",
+    "@blade/core": "*",
+    "@blade/db": "*",
+    "@blade/shared": "*",
+    "@blade/docker-runner": "*",
+    "better-sqlite3": "^11.8.0",
+    "dotenv": "^17.4.1"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.12",
+    "@types/node": "^22.10.5",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "@types/uuid": "^10.0.0",
+    "autoprefixer": "^10.4.20",
+    "husky": "^9.1.7",
+    "postcss": "^8.4.49",
+    "sharp": "^0.34.5",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.7.3"
+  }
+}

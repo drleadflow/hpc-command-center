@@ -1,0 +1,23 @@
+commit	score_delta	status	files_changed	description
+0000000	0	keep	0	baseline audit — score ~55/100
+exp-001	+3	keep	1	delete dead mock-dashboard-data.ts (never imported)
+exp-002	+5	keep	1	remove 6 fake FALLBACK_CLIENTS — clients page shows only real Meta API data or empty state
+exp-003	+8	keep	1	replace 5 hardcoded scorecard metrics with real Meta API calls + real DB metrics
+exp-004	+4	keep	1	remove mockCampaigns, mockHotLeads, mockResponse — fallback returns empty state
+exp-005	+1	keep	1	fix example.com placeholder in ads/create — accepts link param
+exp-006	+1	keep	1	extract hardcoded $400 avg ticket to named constant AVG_TICKET_USD
+exp-007	+2	keep	1	make sprint milestones interactive — click to cycle status, localStorage persist
+exp-008	+3	keep	1	add twitter property to ApifySocialData type — fixes 8 TS2339 errors
+exp-009	+1	keep	1	add "none" to OutreachResponse source union — fixes TS2322
+exp-010	+1	keep	1	fix Deepgram Buffer type — Uint8Array for fetch body compat
+exp-011	+5	keep	1	remove ignoreBuildErrors:true — TypeScript checking enforced on build
+exp-012	+2	keep	1	clients page: API UNAVAILABLE badge + proper empty state with retry
+exp-013	+1	keep	1	pipeline page: fetchError state + error banner
+exp-014	+1	keep	1	revenue page: replace silent .catch with error state + empty state UI
+exp-015	+2	keep	1	create shared useFetch hook + timeAgo + formatDate utilities in src/lib/hooks.ts
+exp-016	+1	keep	1	playbooks: replace hardcoded lastRun dates — real dates from localStorage completions
+exp-017	+2	keep	1	compass: make filter subtexts editable inline, persisted to localStorage
+exp-018	+1	keep	1	clients: replace stale hardcoded lastContact dates with dynamic today
+exp-019	+3	keep	7	consolidate 7 duplicate timeAgo() implementations into shared import from lib/hooks
+exp-020	+1	keep	1	remove debug console.log from BladeCommandCenter.tsx
+exp-021	+0	keep	1	clean up NotificationBell import ordering
