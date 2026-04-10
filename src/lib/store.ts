@@ -13,7 +13,20 @@ type StoreKey =
   | "hpc_kpi_values"
   | "hpc_scorecard"
   | "hpc_settings"
-  | "hpc_priorities";
+  | "hpc_priorities"
+  | "hpc_daily_tracking"
+  | "hpc_scorecard_data"
+  | "hpc_review_cycles"
+  | "hpc_review_notes"
+  | "hpc_policies"
+  | "hpc_onboarding"
+  | "hpc_touchpoints"
+  | "hpc_role_functions"
+  | "hpc_role_kpis"
+  | "hpc_scale_phases"
+  | "hpc_mrr_data"
+  | "hpc_mrr_history"
+  | "hpc_coaching_members";
 
 function read<T>(key: StoreKey, fallback: T): T {
   if (typeof window === "undefined") return fallback;
