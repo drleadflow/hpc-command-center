@@ -3,6 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useStore } from "@/lib/use-store";
+import { ROLES } from "@/lib/team-data";
+import { useRole } from "@/lib/role-context";
 
 interface MrrData {
   total: number;
@@ -33,6 +35,32 @@ const DEFAULT_MRR: MrrData = {
   newMrr: 3000,
   churnedMrr: 0,
 };
+
+interface EarningsYtd {
+  total: number;
+  target: number;
+  lastYear: number;
+}
+
+interface BonusTier {
+  label: string;
+  threshold: number;
+  closesNeeded: number;
+  closesComplete: number;
+  unlocked: boolean;
+}
+
+const DEFAULT_EARNINGS_YTD: EarningsYtd = {
+  total: 38400,
+  target: 96000,
+  lastYear: 72000,
+};
+
+const DEFAULT_BONUS_TIERS: BonusTier[] = [
+  { label: "Tier 2", threshold: 5000, closesNeeded: 0, closesComplete: 0, unlocked: true },
+  { label: "Tier 3", threshold: 10000, closesNeeded: 8, closesComplete: 5, unlocked: false },
+  { label: "Tier 4", threshold: 18000, closesNeeded: 15, closesComplete: 5, unlocked: false },
+];
 
 const DEFAULT_HISTORY: MonthlyEntry[] = [
   { id: "jan", month: "Jan", mrr: 15500 },
@@ -93,8 +121,11 @@ function EditableNumber({
 }
 
 export default function MoneyPage() {
+  const { role } = useRole();
   const [mrr, setMrr] = useStore<MrrData>("hpc_mrr_data" as "hpc_mrr_data", DEFAULT_MRR);
   const [history, setHistory] = useStore<MonthlyEntry[]>("hpc_mrr_history" as "hpc_mrr_history", DEFAULT_HISTORY);
+  const [earningsYtd, setEarningsYtd] = useStore<EarningsYtd>("hpc_earnings_ytd", DEFAULT_EARNINGS_YTD);
+  const [bonusTiers, setBonusTiers] = useStore<BonusTier[]>("hpc_bonus_tiers", DEFAULT_BONUS_TIERS);
 
   const [newMonth, setNewMonth] = useState("");
   const [newMrrVal, setNewMrrVal] = useState("");
@@ -263,6 +294,173 @@ export default function MoneyPage() {
           >
             Add
           </button>
+        </div>
+      </div>
+
+      {/* ── Earnings YTD ─────────────────────────────────────────────── */}
+      <div className="rounded-xl p-4 mt-5" style={{ backgroundColor: "var(--surface)", border: "0.5px solid var(--border)" }}>
+        <div className="text-[10px] uppercase tracking-widest font-medium mb-3" style={{ color: "var(--muted)" }}>Earnings YTD</div>
+        <div className="grid grid-cols-2 gap-3 mb-3">
+          <div>
+            <div className="text-[10px] mb-0.5" style={{ color: "var(--muted)" }}>Total YTD</div>
+            <EditableNumber
+              value={earningsYtd.total}
+              onChange={(v) => setEarningsYtd((prev) => ({ ...prev, total: v }))}
+              prefix="$"
+              className="text-xl font-semibold"
+              style={{ color: "var(--text)" }}
+            />
+          </div>
+          <div>
+            <div className="text-[10px] mb-0.5" style={{ color: "var(--muted)" }}>Annual Target</div>
+            <EditableNumber
+              value={earningsYtd.target}
+              onChange={(v) => setEarningsYtd((prev) => ({ ...prev, target: v }))}
+              prefix="$"
+              className="text-xl font-semibold"
+              style={{ color: "var(--text)" }}
+            />
+          </div>
+        </div>
+
+        {/* Pace bar */}
+        {(() => {
+          const pct = Math.min(Math.round((earningsYtd.total / (earningsYtd.target || 1)) * 100), 100);
+          const projected = Math.round((earningsYtd.total / (new Date().getMonth() + 1)) * 12);
+          const vsLastYear = earningsYtd.lastYear > 0
+            ? Math.round(((earningsYtd.total - earningsYtd.lastYear * ((new Date().getMonth() + 1) / 12)) / (earningsYtd.lastYear * ((new Date().getMonth() + 1) / 12))) * 100)
+            : 0;
+          return (
+            <>
+              <div className="mb-1 flex items-center justify-between">
+                <span className="text-[10px]" style={{ color: "var(--muted)" }}>Pace vs target</span>
+                <span className="text-[11px] font-medium" style={{ color: pct >= 100 ? "var(--success)" : "var(--accent)" }}>{pct}%</span>
+              </div>
+              <div className="h-2 rounded-full mb-3" style={{ backgroundColor: "var(--bg)" }}>
+                <div className="h-2 rounded-full" style={{ width: `${pct}%`, backgroundColor: "var(--accent)" }} />
+              </div>
+              <div className="flex gap-4">
+                <div>
+                  <div className="text-[10px]" style={{ color: "var(--muted)" }}>Projected EOY</div>
+                  <div className="text-[12px] font-medium" style={{ color: "var(--text)" }}>${projected.toLocaleString()}</div>
+                </div>
+                <div>
+                  <div className="text-[10px]" style={{ color: "var(--muted)" }}>vs Last Year</div>
+                  <div className="text-[12px] font-medium" style={{ color: vsLastYear >= 0 ? "var(--success)" : "var(--danger)" }}>
+                    {vsLastYear >= 0 ? "+" : ""}{vsLastYear}%
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[10px]" style={{ color: "var(--muted)" }}>Last Year (edit)</div>
+                  <EditableNumber
+                    value={earningsYtd.lastYear}
+                    onChange={(v) => setEarningsYtd((prev) => ({ ...prev, lastYear: v }))}
+                    prefix="$"
+                    style={{ color: "var(--text)", fontSize: 12, fontWeight: 500 }}
+                  />
+                </div>
+              </div>
+            </>
+          );
+        })()}
+      </div>
+
+      {/* ── Bonus Pacing ─────────────────────────────────────────────── */}
+      <div className="rounded-xl p-4 mt-5" style={{ backgroundColor: "var(--surface)", border: "0.5px solid var(--border)" }}>
+        <div className="text-[10px] uppercase tracking-widest font-medium mb-3" style={{ color: "var(--muted)" }}>Bonus Pacing</div>
+        <div className="space-y-3">
+          {bonusTiers.map((tier, idx) => {
+            const progress = tier.closesNeeded > 0
+              ? Math.min(Math.round((tier.closesComplete / tier.closesNeeded) * 100), 100)
+              : 100;
+            return (
+              <div key={tier.label} className="rounded-lg p-3" style={{ backgroundColor: "var(--bg)" }}>
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-medium" style={{ color: "var(--text)" }}>{tier.label}</span>
+                    <span
+                      className="text-[9px] px-1.5 py-0.5 rounded-full font-medium"
+                      style={{
+                        backgroundColor: tier.unlocked ? "#22c55e20" : "var(--border)",
+                        color: tier.unlocked ? "#22c55e" : "var(--muted)",
+                      }}
+                    >
+                      {tier.unlocked ? "Unlocked" : "Locked"}
+                    </span>
+                  </div>
+                  <EditableNumber
+                    value={tier.threshold}
+                    onChange={(v) => setBonusTiers((prev) => prev.map((t, i) => i === idx ? { ...t, threshold: v } : t))}
+                    prefix="$"
+                    style={{ color: "var(--accent)", fontSize: 11, fontWeight: 600 }}
+                  />
+                </div>
+                {tier.closesNeeded > 0 && (
+                  <>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[10px]" style={{ color: "var(--muted)" }}>
+                        Closes: {tier.closesComplete} / {tier.closesNeeded}
+                      </span>
+                      <span className="text-[10px]" style={{ color: "var(--muted)" }}>{progress}%</span>
+                    </div>
+                    <div className="h-1.5 rounded-full" style={{ backgroundColor: "var(--border)" }}>
+                      <div
+                        className="h-1.5 rounded-full transition-all"
+                        style={{
+                          width: `${progress}%`,
+                          backgroundColor: progress >= 100 ? "#22c55e" : "var(--accent)",
+                        }}
+                      />
+                    </div>
+                  </>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ── Pay Band Visibility ───────────────────────────────────────── */}
+      <div className="rounded-xl p-4 mt-5" style={{ backgroundColor: "var(--surface)", border: "0.5px solid var(--border)" }}>
+        <div className="text-[10px] uppercase tracking-widest font-medium mb-3" style={{ color: "var(--muted)" }}>Pay Band Visibility</div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-[11px]" style={{ borderCollapse: "collapse" }}>
+            <thead>
+              <tr style={{ borderBottom: "0.5px solid var(--border)" }}>
+                {["Role", "Rate Type", "Range", "Equity"].map((h) => (
+                  <th key={h} className="text-left pb-2 pr-3 font-medium text-[10px] uppercase tracking-wider" style={{ color: "var(--muted)" }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {ROLES.map((r) => {
+                const isCurrent = r.hpcRole === role;
+                return (
+                  <tr
+                    key={r.hpcRole}
+                    style={{
+                      borderBottom: "0.5px solid var(--border)",
+                      backgroundColor: isCurrent ? "var(--accent-bg, color-mix(in srgb, var(--accent) 10%, transparent))" : "transparent",
+                    }}
+                  >
+                    <td className="py-2 pr-3 font-medium" style={{ color: isCurrent ? "var(--accent)" : "var(--text)" }}>
+                      {r.title.replace(/\s*\(.*?\)\s*/g, "").trim()}
+                      {isCurrent && <span className="ml-1 text-[9px] opacity-70">(you)</span>}
+                    </td>
+                    <td className="py-2 pr-3" style={{ color: "var(--text)" }}>{r.rateType}</td>
+                    <td className="py-2 pr-3" style={{ color: "var(--muted)" }}>
+                      {r.rateType.includes("commission") ? "Base + %"
+                        : r.rateType.includes("Equity") ? "—"
+                        : r.rateType}
+                    </td>
+                    <td className="py-2" style={{ color: r.rateType.toLowerCase().includes("equity") ? "#22c55e" : "var(--muted)" }}>
+                      {r.rateType.toLowerCase().includes("equity") ? "Yes" : "—"}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>

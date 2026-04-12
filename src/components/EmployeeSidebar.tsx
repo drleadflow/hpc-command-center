@@ -62,6 +62,13 @@ export function EmployeeSidebar() {
     { href: "/numbers", label: "My Numbers", icon: "◎" },
   ];
 
+  const communityItems: NavItem[] = [
+    { href: "/company", label: "Company", icon: "★" },
+    { href: "/growth-plan", label: "Growth", icon: "▲" },
+    { href: "/recognition", label: "Recognition", icon: "🏆" },
+    { href: "/feed", label: "Team Feed", icon: "◆" },
+  ];
+
   const sidebarContent = (
     <>
       {/* Header */}
@@ -99,6 +106,32 @@ export function EmployeeSidebar() {
                   backgroundColor: active ? "var(--accent-bg)" : "transparent",
                   color: active ? "var(--accent-text)" : "var(--text-secondary)",
                   fontWeight: active ? "500" : "500",
+                  fontSize: "0.9rem",
+                  paddingTop: "0.625rem",
+                  paddingBottom: "0.625rem",
+                }}
+              >
+                <span style={{ fontSize: "17px", opacity: 0.75 }}>{item.icon}</span>
+                {item.label}
+              </Link>
+            );
+          })}
+        </div>
+
+        {/* Community */}
+        <div className="my-3 border-t" style={{ borderColor: "var(--border-subtle)" }} />
+        <div className="space-y-0.5">
+          {communityItems.map((item) => {
+            const active = isActive(pathname, item.href);
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="flex items-center gap-3 px-4 rounded-xl transition-all min-h-[44px]"
+                style={{
+                  backgroundColor: active ? "var(--accent-bg)" : "transparent",
+                  color: active ? "var(--accent-text)" : "var(--text-secondary)",
+                  fontWeight: "500",
                   fontSize: "0.9rem",
                   paddingTop: "0.625rem",
                   paddingBottom: "0.625rem",

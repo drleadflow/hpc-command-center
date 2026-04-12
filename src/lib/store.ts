@@ -26,7 +26,23 @@ type StoreKey =
   | "hpc_scale_phases"
   | "hpc_mrr_data"
   | "hpc_mrr_history"
-  | "hpc_coaching_members";
+  | "hpc_coaching_members"
+  | "hpc_company_kpis"
+  | "hpc_client_wins"
+  | "hpc_onboarding_progress"
+  | "hpc_career_progress"
+  | "hpc_skills_matrix"
+  | "hpc_one_on_one"
+  | "hpc_milestones"
+  | "hpc_streaks"
+  | "hpc_badges"
+  | "hpc_feed_posts"
+  | "hpc_kudos_received"
+  | "hpc_kudos_given"
+  | "hpc_coffee_roulette"
+  | "hpc_suggestions"
+  | "hpc_earnings_ytd"
+  | "hpc_bonus_tiers";
 
 function read<T>(key: string, fallback: T): T {
   if (typeof window === "undefined") return fallback;
