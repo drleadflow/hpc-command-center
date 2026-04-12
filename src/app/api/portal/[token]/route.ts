@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getPortalLink } from "@/lib/db";
+import { getPortalLink, getWorkbookProgress } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
@@ -121,6 +121,9 @@ export async function GET(
       };
     });
 
+    // 4. Workbook progress
+    const workbook = await getWorkbookProgress(token, clientSlug);
+
     return NextResponse.json({
       clientName,
       accountId,
@@ -136,6 +139,7 @@ export async function GET(
       cpl: parseFloat(cpl.toFixed(2)),
       campaigns,
       dailySpend,
+      workbook,
       generatedAt: new Date().toISOString(),
       expiresAt: link.expiresAt,
     });

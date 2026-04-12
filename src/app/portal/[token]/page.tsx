@@ -23,6 +23,23 @@ interface DailySpend {
   leads: number;
 }
 
+interface WorkbookModule {
+  id: string;
+  moduleId: string;
+  moduleName: string;
+  status: "completed" | "in_progress" | "not_started";
+  progress: number;
+  lastActivity?: string;
+}
+
+interface WorkbookData {
+  workbookUrl: string;
+  clinicAppUrl: string;
+  modules: WorkbookModule[];
+  overallProgress: number;
+  lastLogin?: string;
+}
+
 interface PortalData {
   clientName: string;
   accountId: string;
@@ -38,9 +55,12 @@ interface PortalData {
   cpl: number;
   campaigns: Campaign[];
   dailySpend: DailySpend[];
+  workbook?: WorkbookData;
   generatedAt: string;
   expiresAt: string;
 }
+
+type TabId = "performance" | "workbook" | "resources";
 
 /* ── Helpers ── */
 const fmt$ = (v: number) =>
@@ -231,6 +251,35 @@ const S = {
     background: "#ffffff",
     marginTop: 40,
   } as React.CSSProperties,
+
+  tabBar: {
+    display: "flex",
+    gap: 2,
+    background: "#f3f4f6",
+    borderRadius: 10,
+    padding: 4,
+    marginBottom: 28,
+  } as React.CSSProperties,
+
+  tab: {
+    flex: 1,
+    padding: "8px 16px",
+    borderRadius: 7,
+    fontSize: 13,
+    fontWeight: 500,
+    cursor: "pointer",
+    border: "none",
+    background: "transparent",
+    color: "#6b7280",
+    transition: "all 0.15s",
+  } as React.CSSProperties,
+
+  tabActive: {
+    background: "#ffffff",
+    color: "#1a1d23",
+    boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
+    fontWeight: 600,
+  } as React.CSSProperties,
 };
 
 /* ── Stat Card ── */
@@ -388,6 +437,370 @@ function CampaignTable({ campaigns, title }: { campaigns: Campaign[]; title: str
   );
 }
 
+/* ── Workbook Status Badge ── */
+function WorkbookStatusBadge({ status }: { status: WorkbookModule["status"] }) {
+  const map = {
+    completed: { bg: "#dcfce7", color: "#15803d", label: "Completed", dot: "#16a34a" },
+    in_progress: { bg: "#ede9fe", color: "#6d28d9", label: "In Progress", dot: "#7c3aed" },
+    not_started: { bg: "#f3f4f6", color: "#6b7280", label: "Not Started", dot: "#9ca3af" },
+  };
+  const s = map[status];
+  return (
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 5,
+        padding: "3px 9px",
+        borderRadius: 20,
+        fontSize: 11,
+        fontWeight: 500,
+        background: s.bg,
+        color: s.color,
+      }}
+    >
+      <span style={{ width: 6, height: 6, borderRadius: "50%", background: s.dot, display: "inline-block" }} />
+      {s.label}
+    </span>
+  );
+}
+
+/* ── Progress Bar ── */
+function ProgressBar({ value, height = 6 }: { value: number; height?: number }) {
+  return (
+    <div
+      style={{
+        width: "100%",
+        height,
+        background: "#f3f4f6",
+        borderRadius: height,
+        overflow: "hidden",
+      }}
+    >
+      <div
+        style={{
+          width: `${Math.max(0, Math.min(100, value))}%`,
+          height: "100%",
+          background: "linear-gradient(90deg, #6366f1 0%, #8b5cf6 100%)",
+          borderRadius: height,
+          transition: "width 0.4s ease",
+        }}
+      />
+    </div>
+  );
+}
+
+/* ── Progress Ring ── */
+function ProgressRing({ value, size = 80 }: { value: number; size?: number }) {
+  const r = (size - 10) / 2;
+  const circ = 2 * Math.PI * r;
+  const offset = circ - (value / 100) * circ;
+  return (
+    <svg width={size} height={size} style={{ transform: "rotate(-90deg)" }}>
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#f3f4f6" strokeWidth={8} />
+      <circle
+        cx={size / 2}
+        cy={size / 2}
+        r={r}
+        fill="none"
+        stroke="url(#ringGrad)"
+        strokeWidth={8}
+        strokeDasharray={circ}
+        strokeDashoffset={offset}
+        strokeLinecap="round"
+        style={{ transition: "stroke-dashoffset 0.6s ease" }}
+      />
+      <defs>
+        <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stopColor="#6366f1" />
+          <stop offset="100%" stopColor="#8b5cf6" />
+        </linearGradient>
+      </defs>
+    </svg>
+  );
+}
+
+/* ── Workbook Progress Tab ── */
+function WorkbookProgressTab({ workbook, clientName }: { workbook: WorkbookData; clientName: string }) {
+  return (
+    <div>
+      {/* Overall progress hero */}
+      <div
+        style={{
+          background: "#ffffff",
+          border: "1px solid #e8eaed",
+          borderRadius: 12,
+          padding: "24px",
+          marginBottom: 20,
+          display: "flex",
+          alignItems: "center",
+          gap: 24,
+          flexWrap: "wrap",
+        }}
+      >
+        <div style={{ position: "relative", flexShrink: 0 }}>
+          <ProgressRing value={workbook.overallProgress} size={88} />
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexDirection: "column",
+            }}
+          >
+            <span style={{ fontSize: 18, fontWeight: 700, color: "#1a1d23", lineHeight: 1 }}>
+              {workbook.overallProgress}%
+            </span>
+          </div>
+        </div>
+        <div style={{ flex: 1, minWidth: 180 }}>
+          <div style={{ fontSize: 17, fontWeight: 700, color: "#1a1d23", marginBottom: 4 }}>
+            Client OS Progress
+          </div>
+          <div style={{ fontSize: 13, color: "#6b7280", marginBottom: 12 }}>
+            {workbook.modules.filter(m => m.status === "completed").length} of{" "}
+            {workbook.modules.length} modules completed
+          </div>
+          <ProgressBar value={workbook.overallProgress} height={8} />
+        </div>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <a
+            href={`${workbook.workbookUrl}/login`}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "9px 16px",
+              background: "linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)",
+              color: "#fff",
+              borderRadius: 8,
+              fontSize: 13,
+              fontWeight: 600,
+              textDecoration: "none",
+              whiteSpace: "nowrap",
+            }}
+          >
+            Open Workbook ↗
+          </a>
+          <a
+            href={workbook.clinicAppUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "9px 16px",
+              background: "#f3f4f6",
+              color: "#374151",
+              borderRadius: 8,
+              fontSize: 13,
+              fontWeight: 600,
+              textDecoration: "none",
+              whiteSpace: "nowrap",
+            }}
+          >
+            Clinic App ↗
+          </a>
+        </div>
+      </div>
+
+      {/* Module cards */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 12 }}>
+        {workbook.modules.map((mod, i) => (
+          <div
+            key={mod.moduleId}
+            style={{
+              background: "#ffffff",
+              border: "1px solid #e8eaed",
+              borderRadius: 12,
+              padding: "18px 20px",
+              cursor: "default",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8, marginBottom: 10 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div
+                  style={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: 8,
+                    background: "linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "#fff",
+                    fontSize: 12,
+                    fontWeight: 700,
+                    flexShrink: 0,
+                  }}
+                >
+                  {i + 1}
+                </div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "#1a1d23", lineHeight: 1.3 }}>
+                  {mod.moduleName}
+                </div>
+              </div>
+              <WorkbookStatusBadge status={mod.status} />
+            </div>
+            <ProgressBar value={mod.progress} height={5} />
+            <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>
+              <span style={{ fontSize: 11, color: "#9ca3af" }}>
+                {mod.lastActivity ? `Last active ${mod.lastActivity}` : "Not started yet"}
+              </span>
+              <span style={{ fontSize: 11, fontWeight: 600, color: "#6366f1" }}>
+                {mod.progress}%
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ── Resources Tab ── */
+function ResourcesTab({ workbook, clientName }: { workbook: WorkbookData; clientName: string }) {
+  const resources = [
+    {
+      title: "Client OS Workbook",
+      description: "Your step-by-step playbook for building a lead-generating medical clinic. Access all 8 modules, track progress, and follow proven frameworks.",
+      url: `${workbook.workbookUrl}/login`,
+      icon: "📖",
+      cta: "Open Workbook",
+      accent: "linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)",
+    },
+    {
+      title: "Clinic Project App",
+      description: "Track your clinic's project milestones, tasks, and implementation status in real-time alongside your campaigns.",
+      url: workbook.clinicAppUrl,
+      icon: "🏥",
+      cta: "Open Clinic App",
+      accent: "linear-gradient(135deg, #0ea5e9 0%, #6366f1 100%)",
+    },
+  ];
+
+  return (
+    <div>
+      <div style={{ marginBottom: 20, fontSize: 14, color: "#6b7280" }}>
+        Quick access to all your {clientName} resources and tools.
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 16, marginBottom: 28 }}>
+        {resources.map(r => (
+          <div
+            key={r.url}
+            style={{
+              background: "#ffffff",
+              border: "1px solid #e8eaed",
+              borderRadius: 14,
+              overflow: "hidden",
+            }}
+          >
+            <div style={{ height: 6, background: r.accent }} />
+            <div style={{ padding: "22px 22px 20px" }}>
+              <div style={{ fontSize: 28, marginBottom: 10 }}>{r.icon}</div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: "#1a1d23", marginBottom: 6 }}>
+                {r.title}
+              </div>
+              <div style={{ fontSize: 13, color: "#6b7280", lineHeight: 1.6, marginBottom: 18 }}>
+                {r.description}
+              </div>
+              <a
+                href={r.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: "9px 18px",
+                  background: r.accent,
+                  color: "#fff",
+                  borderRadius: 8,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  textDecoration: "none",
+                }}
+              >
+                {r.cta} ↗
+              </a>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Embedded iframe with fallback */}
+      <div style={S.card}>
+        <div style={S.cardHeader}>
+          <div style={S.cardTitle}>Workbook Preview</div>
+          <a
+            href={`${workbook.workbookUrl}/login`}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ fontSize: 12, color: "#6366f1", textDecoration: "none", fontWeight: 500 }}
+          >
+            Open in new tab ↗
+          </a>
+        </div>
+        <div style={{ position: "relative", height: 420 }}>
+          <iframe
+            src={`${workbook.workbookUrl}/login`}
+            style={{
+              width: "100%",
+              height: "100%",
+              border: "none",
+              display: "block",
+            }}
+            title="Client Workbook"
+            sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+          />
+          {/* Fallback overlay — shown via CSS if iframe fails to load */}
+          <noscript>
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                background: "#f8f9fb",
+                flexDirection: "column",
+                gap: 12,
+              }}
+            >
+              <div style={{ fontSize: 32 }}>🔒</div>
+              <div style={{ fontSize: 14, color: "#6b7280" }}>
+                Preview unavailable — the site blocks embedding.
+              </div>
+              <a
+                href={`${workbook.workbookUrl}/login`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  padding: "8px 16px",
+                  background: "#6366f1",
+                  color: "#fff",
+                  borderRadius: 8,
+                  textDecoration: "none",
+                  fontSize: 13,
+                  fontWeight: 600,
+                }}
+              >
+                Open directly
+              </a>
+            </div>
+          </noscript>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ── Main Page ── */
 export default function PortalPage() {
   const params = useParams();
@@ -396,6 +809,7 @@ export default function PortalPage() {
   const [data, setData] = useState<PortalData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<TabId>("performance");
 
   useEffect(() => {
     fetch(`/api/portal/${token}`)
@@ -518,7 +932,7 @@ export default function PortalPage() {
         <div style={{ ...S.clientHeader, display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
           <div>
             <div style={S.clientName}>{data.clientName}</div>
-            <div style={S.clientSub}>Campaign Performance Report · Last 30 days</div>
+            <div style={S.clientSub}>Client Dashboard · Dr. Lead Flow</div>
           </div>
           <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
             <StatusBadge status={activeCampaigns.length > 0 ? "ACTIVE" : "PAUSED"} />
@@ -528,40 +942,85 @@ export default function PortalPage() {
           </div>
         </div>
 
-        {/* ── Stats Grid ── */}
-        <div style={S.statsGrid}>
-          <StatCard label="Total Spend" value={fmt$(data.spend)} sub="Last 30 days" />
-          <StatCard label="Total Leads" value={fmtN(data.leads)} sub="All campaigns" />
-          <StatCard
-            label="Cost Per Lead"
-            value={data.cpl > 0 ? fmt$(data.cpl) : "—"}
-            sub={data.leads > 0 ? `${data.leads} leads generated` : "No leads yet"}
-          />
-          <StatCard label="CTR" value={fmtPct(data.ctr)} sub="Click-through rate" />
-          <StatCard label="Impressions" value={fmtN(data.impressions)} sub="Total views" />
-          <StatCard label="Reach" value={fmtN(data.reach)} sub="Unique people reached" />
+        {/* ── Tab Bar ── */}
+        <div style={S.tabBar}>
+          {(["performance", "workbook", "resources"] as TabId[]).map(tab => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              style={{
+                ...S.tab,
+                ...(activeTab === tab ? S.tabActive : {}),
+              }}
+            >
+              {tab === "performance" && "Performance"}
+              {tab === "workbook" && "Workbook Progress"}
+              {tab === "resources" && "Resources"}
+            </button>
+          ))}
         </div>
 
-        {/* ── Daily Spend Chart ── */}
-        <SpendChart data={data.dailySpend} />
+        {/* ── Performance Tab ── */}
+        {activeTab === "performance" && (
+          <>
+            {/* Stats Grid */}
+            <div style={S.statsGrid}>
+              <StatCard label="Total Spend" value={fmt$(data.spend)} sub="Last 30 days" />
+              <StatCard label="Total Leads" value={fmtN(data.leads)} sub="All campaigns" />
+              <StatCard
+                label="Cost Per Lead"
+                value={data.cpl > 0 ? fmt$(data.cpl) : "—"}
+                sub={data.leads > 0 ? `${data.leads} leads generated` : "No leads yet"}
+              />
+              <StatCard label="CTR" value={fmtPct(data.ctr)} sub="Click-through rate" />
+              <StatCard label="Impressions" value={fmtN(data.impressions)} sub="Total views" />
+              <StatCard label="Reach" value={fmtN(data.reach)} sub="Unique people reached" />
+            </div>
 
-        {/* ── Campaign Tables ── */}
-        <CampaignTable campaigns={activeCampaigns} title="Active Campaigns" />
-        <CampaignTable campaigns={pausedCampaigns} title="Paused Campaigns" />
+            {/* Daily Spend Chart */}
+            <SpendChart data={data.dailySpend} />
 
-        {/* ── Empty state ── */}
-        {data.campaigns.length === 0 && (
-          <div
-            style={{
-              ...S.card,
-              padding: 48,
-              textAlign: "center",
-              color: "#9ca3af",
-              fontSize: 14,
-            }}
-          >
-            No campaigns found for this account.
-          </div>
+            {/* Campaign Tables */}
+            <CampaignTable campaigns={activeCampaigns} title="Active Campaigns" />
+            <CampaignTable campaigns={pausedCampaigns} title="Paused Campaigns" />
+
+            {/* Empty state */}
+            {data.campaigns.length === 0 && (
+              <div
+                style={{
+                  ...S.card,
+                  padding: 48,
+                  textAlign: "center",
+                  color: "#9ca3af",
+                  fontSize: 14,
+                }}
+              >
+                No campaigns found for this account.
+              </div>
+            )}
+          </>
+        )}
+
+        {/* ── Workbook Tab ── */}
+        {activeTab === "workbook" && (
+          data.workbook ? (
+            <WorkbookProgressTab workbook={data.workbook} clientName={data.clientName} />
+          ) : (
+            <div style={{ ...S.card, padding: 48, textAlign: "center", color: "#9ca3af", fontSize: 14 }}>
+              Workbook data is not yet available for this account.
+            </div>
+          )
+        )}
+
+        {/* ── Resources Tab ── */}
+        {activeTab === "resources" && (
+          data.workbook ? (
+            <ResourcesTab workbook={data.workbook} clientName={data.clientName} />
+          ) : (
+            <div style={{ ...S.card, padding: 48, textAlign: "center", color: "#9ca3af", fontSize: 14 }}>
+              No resources configured for this account.
+            </div>
+          )
         )}
 
         {/* ── Expiry notice ── */}

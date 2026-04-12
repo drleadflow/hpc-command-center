@@ -59,9 +59,13 @@ export {
   createPortalLink,
   listPortalLinks,
 
+  // Workbook Progress
+  getWorkbookProgress,
+  updateWorkbookModule,
+
   // Sync stubs (backwards compat)
   getProjectsSync,
   getTasksSync,
 } from "./db-supabase";
 
-export type { NotificationType, Notification, PortalLink } from "./db-supabase";
+export type { NotificationType, Notification, PortalLink, WorkbookModule, WorkbookModuleStatus } from "./db-supabase";

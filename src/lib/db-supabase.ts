@@ -644,6 +644,151 @@ export async function listPortalLinks(): Promise<PortalLink[]> {
   return (data ?? []).map(mapPortalLink);
 }
 
+// ── Workbook Progress ────────────────────────────────────────────────
+
+export type WorkbookModuleStatus = "completed" | "in_progress" | "not_started";
+
+export interface WorkbookModule {
+  id: string;
+  moduleId: string;
+  moduleName: string;
+  status: WorkbookModuleStatus;
+  progress: number;
+  lastActivity?: string;
+}
+
+const DEFAULT_MODULES: { id: string; name: string }[] = [
+  { id: "clinic-foundation", name: "Clinic Foundation Setup" },
+  { id: "lead-gen-machine", name: "Lead Generation Machine" },
+  { id: "patient-conversion", name: "Patient Conversion System" },
+  { id: "retention-reactivation", name: "Retention & Reactivation" },
+  { id: "growth-scaling", name: "Growth Scaling Playbook" },
+  { id: "ad-campaign-mastery", name: "Ad Campaign Mastery" },
+  { id: "review-reputation", name: "Review & Reputation Engine" },
+  { id: "team-training-sops", name: "Team Training & SOPs" },
+];
+
+const WORKBOOK_URLS: Record<string, { workbookUrl: string; clinicAppUrl: string }> = {
+  healthproceo: {
+    workbookUrl: "https://workbook.healthproceo.com",
+    clinicAppUrl: "https://clinic-legwtkzpa-dlfs-projects-2e99dbe5.vercel.app",
+  },
+};
+
+function defaultWorkbookUrls() {
+  return {
+    workbookUrl: "https://workbook.healthproceo.com",
+    clinicAppUrl: "https://clinic-legwtkzpa-dlfs-projects-2e99dbe5.vercel.app",
+  };
+}
+
+export async function getWorkbookProgress(
+  portalToken: string,
+  clientSlug: string
+): Promise<{
+  workbookUrl: string;
+  clinicAppUrl: string;
+  modules: WorkbookModule[];
+  overallProgress: number;
+  lastLogin?: string;
+}> {
+  const urls = WORKBOOK_URLS[clientSlug] || defaultWorkbookUrls();
+
+  const { data, error } = await supabase
+    .from("workbook_progress")
+    .select("*")
+    .eq("portal_token", portalToken);
+
+  let modules: WorkbookModule[];
+
+  if (error || !data || data.length === 0) {
+    // Return default modules with not_started status
+    modules = DEFAULT_MODULES.map((m) => ({
+      id: m.id,
+      moduleId: m.id,
+      moduleName: m.name,
+      status: "not_started" as WorkbookModuleStatus,
+      progress: 0,
+      lastActivity: undefined,
+    }));
+  } else {
+    // Merge DB rows with default module list
+    const dbMap = new Map(data.map((row: any) => [row.module_id, row]));
+    modules = DEFAULT_MODULES.map((m) => {
+      const row = dbMap.get(m.id) as any;
+      if (row) {
+        return {
+          id: row.id,
+          moduleId: row.module_id,
+          moduleName: row.module_name || m.name,
+          status: row.status as WorkbookModuleStatus,
+          progress: row.progress ?? 0,
+          lastActivity: row.last_activity || undefined,
+        };
+      }
+      return {
+        id: m.id,
+        moduleId: m.id,
+        moduleName: m.name,
+        status: "not_started" as WorkbookModuleStatus,
+        progress: 0,
+        lastActivity: undefined,
+      };
+    });
+  }
+
+  const totalProgress = modules.reduce((sum, m) => sum + m.progress, 0);
+  const overallProgress = Math.round(totalProgress / modules.length);
+
+  return {
+    ...urls,
+    modules,
+    overallProgress,
+  };
+}
+
+export async function updateWorkbookModule(
+  portalToken: string,
+  clientSlug: string,
+  moduleId: string,
+  updates: { status?: WorkbookModuleStatus; progress?: number; lastActivity?: string }
+): Promise<WorkbookModule | null> {
+  const moduleDef = DEFAULT_MODULES.find((m) => m.id === moduleId);
+  const moduleName = moduleDef?.name || moduleId;
+
+  const { data, error } = await supabase
+    .from("workbook_progress")
+    .upsert(
+      {
+        portal_token: portalToken,
+        client_slug: clientSlug,
+        module_id: moduleId,
+        module_name: moduleName,
+        status: updates.status ?? "not_started",
+        progress: updates.progress ?? 0,
+        last_activity: updates.lastActivity || null,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "portal_token,module_id" }
+    )
+    .select()
+    .single();
+
+  if (error || !data) {
+    console.error("Supabase updateWorkbookModule error:", error?.message);
+    return null;
+  }
+
+  return {
+    id: data.id,
+    moduleId: data.module_id,
+    moduleName: data.module_name,
+    status: data.status as WorkbookModuleStatus,
+    progress: data.progress,
+    lastActivity: data.last_activity || undefined,
+  };
+}
+
 // ── Sync stubs (no-op for backwards compat) ─────────────────────────
 
 export function getProjectsSync(_department?: Department): Project[] {
